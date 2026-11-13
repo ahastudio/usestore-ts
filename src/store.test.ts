@@ -46,7 +46,7 @@ describe('action', () => {
 
       expect(store.firstName).toBe(firstName);
 
-      expect(handleChange).toBeCalled();
+      expect(handleChange).toHaveBeenCalled();
     });
   });
 
@@ -54,7 +54,7 @@ describe('action', () => {
     it("doesn't calls onChange handler", () => {
       store.changeFirstName('');
 
-      expect(handleChange).not.toBeCalled();
+      expect(handleChange).not.toHaveBeenCalled();
     });
   });
 });

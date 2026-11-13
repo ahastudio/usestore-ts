@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
 
 import { STORE_GLUE_PROPERTY_KEY } from './contants';
+import StoreGlue from './StoreGlue';
 import { NonFunctionProperties } from './types';
 
 export default function useStore<Store extends object>(
   store: Store,
 ): [NonFunctionProperties<Store>, Readonly<Store>] {
-  const glue = Reflect.get(store, STORE_GLUE_PROPERTY_KEY);
+  const glue = Reflect.get(store, STORE_GLUE_PROPERTY_KEY) as StoreGlue | undefined;
   if (!glue) {
     throw new Error('Cannot find store glue');
   }

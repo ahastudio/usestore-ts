@@ -29,7 +29,7 @@ test('StoreGlue', () => {
     name,
   };
 
-  expect(handleChange).toBeCalled();
+  expect(handleChange).toHaveBeenCalled();
 
   expect(glue.getSnapshot()).toEqual(snapshot);
 });
