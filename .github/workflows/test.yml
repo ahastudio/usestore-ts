@@ -3,21 +3,35 @@ name: Test
 on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: ubuntu-20.04
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [20, 22, 24, 26]
+        include:
+          - os: macos-latest
+            node-version: 26
+          - os: windows-latest
+            node-version: 26
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v5
         with:
-          node-version: '16'
-          cache: npm
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Lint
-        run: npx eslint --ext .js,.jsx,.ts,.tsx .
+        run: pnpm exec eslint --ext .js,.jsx,.ts,.tsx .
       - name: Compile to check syntax
-        run: npx tsc --noEmit
+        run: pnpm run check
       - name: Run tests
-        run: npx jest --verbose --coverage
+        run: pnpm exec jest --verbose --coverage
+      - name: Build
+        run: pnpm run build:cjs && pnpm run build:esm
