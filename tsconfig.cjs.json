@@ -3,8 +3,8 @@
   "compilerOptions": {
     "lib": ["ES6", "DOM"],
     "target": "ES6",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "outDir": "./dist/cjs"
   }
 }
