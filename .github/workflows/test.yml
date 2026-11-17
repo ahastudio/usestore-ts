@@ -33,5 +33,7 @@ jobs:
         run: pnpm run check
       - name: Run tests
         run: pnpm exec jest --verbose --coverage
+      - name: Run tests with React 18
+        run: pnpm run test:react18
       - name: Build
         run: pnpm run build:cjs && pnpm run build:esm
