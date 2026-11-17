@@ -21,6 +21,15 @@ export function Store() {
   };
 }
 
+function notify(store: object, returnValue: unknown) {
+  const glue = Reflect.get(store, STORE_GLUE_PROPERTY_KEY);
+  const update = () => glue.update(store);
+  update();
+  if (returnValue instanceof Promise) {
+    returnValue.then(update, update);
+  }
+}
+
 export function Action() {
   return (
     target: object,
@@ -30,7 +39,7 @@ export function Action() {
     const method = descriptor.value;
     descriptor.value = function decorator(...args: unknown[]) {
       const returnValue = method.apply(this, args);
-      Reflect.get(this, STORE_GLUE_PROPERTY_KEY).update(this);
+      notify(this, returnValue);
       return returnValue;
     };
   };
