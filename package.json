@@ -18,6 +18,7 @@
     "check": "tsc --noEmit",
     "lint": "eslint --fix --ext .js,.jsx,.ts,.tsx .",
     "test": "jest",
+    "test:react18": "jest --config jest.react18.config.js",
     "coverage": "jest --coverage --coverage-reporters html",
     "watch:test": "jest --watchAll"
   },
@@ -42,6 +43,8 @@
     "jest-environment-jsdom": "^30.5.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-dom18": "npm:react-dom@18.3.1",
+    "react18": "npm:react@18.3.1",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
