@@ -6,5 +6,6 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "outDir": "./dist/cjs"
-  }
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx"]
 }
