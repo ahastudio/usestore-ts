@@ -46,8 +46,7 @@ class EdgeStore {
 }
 
 describe('sync exception', () => {
-  // Known defect: update is skipped when the method throws.
-  it.failing('notifies about state changed before the throw', () => {
+  it('notifies about state changed before the throw', () => {
     const store = new EdgeStore();
     const listener = jest.fn();
     glueOf(store).subscribe(listener);

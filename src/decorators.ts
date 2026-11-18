@@ -21,12 +21,22 @@ export function Store() {
   };
 }
 
-function notify(store: object, returnValue: unknown) {
-  const glue = Reflect.get(store, STORE_GLUE_PROPERTY_KEY);
-  const update = () => glue.update(store);
-  update();
+function updaterOf(store: object) {
+  return () => Reflect.get(store, STORE_GLUE_PROPERTY_KEY).update(store);
+}
+
+function watch(returnValue: unknown, update: () => void) {
   if (returnValue instanceof Promise) {
     returnValue.then(update, update);
+  }
+  return returnValue;
+}
+
+function notify(store: object, run: () => unknown) {
+  try {
+    return watch(run(), updaterOf(store));
+  } finally {
+    updaterOf(store)();
   }
 }
 
@@ -38,9 +48,7 @@ export function Action() {
   ) => {
     const method = descriptor.value;
     descriptor.value = function decorator(...args: unknown[]) {
-      const returnValue = method.apply(this, args);
-      notify(this, returnValue);
-      return returnValue;
+      return notify(this, () => method.apply(this, args));
     };
   };
 }
