@@ -705,3 +705,143 @@ describe('React integration', () => {
     expect(screen.getByTestId('view').textContent).toBe('0 items||I');
   });
 });
+
+describe('random action sequences', () => {
+  @Store()
+  class Ledger {
+    count = 0;
+
+    log: string[] = [];
+
+    @Action()
+    inc(n: number) {
+      this.count += n;
+    }
+
+    @Action()
+    push(text: string) {
+      this.log = [...this.log, text];
+    }
+
+    @Action()
+    incThenThrow(n: number) {
+      this.count += n;
+      throw new Error('sync');
+    }
+
+    @Action()
+    async slowInc(gate: Promise<number>) {
+      const value = await gate;
+      this.count += value;
+    }
+
+    @Action()
+    async slowFail(gate: Promise<number>) {
+      this.log = [...this.log, 'fail-start'];
+      await gate;
+    }
+  }
+
+  function random(seed: number) {
+    let state = seed;
+    return () => {
+      state = (state * 1664525 + 1013904223) % 4294967296;
+      return state / 4294967296;
+    };
+  }
+
+  const flush = () => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+
+  const stateOf = (value: { count: number; log: string[] }) => JSON.stringify({
+    count: value.count,
+    log: value.log,
+  });
+
+  it.each(Array.from({ length: 40 }, (_, i) => i + 1))(
+    'keeps the snapshot equal to the store and the model (seed %i)',
+    async (seed) => {
+      const next = random(seed);
+      const pick = (n: number) => Math.floor(next() * n);
+      const store = new Ledger();
+      const glue = glueOf(store);
+      const model = { count: 0, log: [] as string[] };
+      const pending: { gate: ReturnType<typeof deferred<number>>; fails: boolean }[] = [];
+      const seen: string[] = [];
+      const snapshots: object[] = [];
+      let notifications = 0;
+      const unhandled = jest.fn();
+      proc.on('unhandledRejection', unhandled);
+
+      glue.subscribe(() => {
+        notifications += 1;
+        const snapshot = glue.getSnapshot() as { count: number; log: string[] };
+        expect(stateOf(snapshot)).toBe(stateOf(store));
+        seen.push(stateOf(snapshot));
+        snapshots.push(snapshot);
+      });
+
+      for (let step = 0; step < 60; step += 1) {
+        const before = glue.getSnapshot();
+        const beforeState = stateOf(model);
+        const choice = pick(7);
+        const n = pick(9) + 1;
+
+        if (choice === 0) {
+          store.inc(n);
+          model.count += n;
+        } else if (choice === 1) {
+          store.push(`p${step}`);
+          model.log = [...model.log, `p${step}`];
+        } else if (choice === 2) {
+          expect(() => store.incThenThrow(n)).toThrow('sync');
+          model.count += n;
+        } else if (choice === 3) {
+          const gate = deferred<number>();
+          pending.push({ gate, fails: false });
+          store.slowInc(gate.promise);
+        } else if (choice === 4) {
+          const gate = deferred<number>();
+          pending.push({ gate, fails: true });
+          store.slowFail(gate.promise).catch(() => {});
+          model.log = [...model.log, 'fail-start'];
+        } else if (pending.length) {
+          const [{ gate, fails }] = pending.splice(pick(pending.length), 1);
+          if (fails) {
+            gate.reject(new Error('later'));
+          } else {
+            gate.resolve(n);
+            model.count += n;
+          }
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await flush();
+
+        expect(stateOf(store)).toBe(stateOf(model));
+        expect(stateOf(glue.getSnapshot() as Ledger)).toBe(stateOf(model));
+        if (stateOf(model) === beforeState) {
+          expect(glue.getSnapshot()).toBe(before);
+        } else {
+          expect(glue.getSnapshot()).not.toBe(before);
+        }
+      }
+
+      pending.forEach(({ gate, fails }) => {
+        if (fails) {
+          gate.reject(new Error('end'));
+        } else {
+          gate.resolve(1);
+          model.count += 1;
+        }
+      });
+      await flush();
+
+      expect(stateOf(store)).toBe(stateOf(model));
+      expect(stateOf(glue.getSnapshot() as Ledger)).toBe(stateOf(model));
+      expect(new Set(snapshots).size).toBe(snapshots.length);
+      seen.slice(1).forEach((state, i) => expect(state).not.toBe(seen[i]));
+      expect(notifications).toBeGreaterThan(0);
+      expect(unhandled).not.toHaveBeenCalled();
+      proc.off('unhandledRejection', unhandled);
+    },
+  );
+});
